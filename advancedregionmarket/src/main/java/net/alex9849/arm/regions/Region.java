@@ -36,6 +36,7 @@ import org.bukkit.util.Vector;
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
@@ -749,8 +750,10 @@ public abstract class Region implements Saveable {
     public void deleteSigns() {
         for (int i = 0; i < this.sellsign.size(); i++) {
             Location loc = this.sellsign.get(i).getLocation();
-            loc.getBlock().setType(Material.AIR);
-            this.removeSign(loc);
+            AdvancedRegionMarket.getInstance().getScheduler().runAtLocation(loc, (t) -> {
+                loc.getBlock().setType(Material.AIR);
+                this.removeSign(loc);
+            });
             i--;
         }
     }
@@ -852,12 +855,14 @@ public abstract class Region implements Saveable {
     public void updateSigns() {
 
         for (SignData signData : this.sellsign) {
-            if (signData.isChunkLoaded()) {
-                if (!signData.isPlaced()) {
-                    signData.placeSign();
+            AdvancedRegionMarket.getInstance().getScheduler().runAtLocation(signData.getLocation(), (t) -> {
+                if (signData.isChunkLoaded()) {
+                    if (!signData.isPlaced()) {
+                        signData.placeSign();
+                    }
+                    this.updateSignText(signData);
                 }
-                this.updateSignText(signData);
-            }
+            });
         }
     }
 
@@ -969,7 +974,13 @@ public abstract class Region implements Saveable {
         File schematicFolder = new File(AdvancedRegionMarket.getInstance().getDataFolder() + "/schematics");
         File regionsSchematicPathWithoutFileEnding = new File(schematicFolder + "/" + this.getRegionworld().getName() + "/" + this.getRegion().getId() + "/schematic");
 
-        AdvancedRegionMarket.getInstance().getWorldEditInterface().restoreSchematic(this.getRegion(), this.getRegionworld(), regionsSchematicPathWithoutFileEnding);
+        AdvancedRegionMarket.getInstance().getScheduler().runAtLocation(this.getRegion().getMaxPoint().toLocation(this.getRegionworld()),  (t) -> {
+            try { // TODO
+                AdvancedRegionMarket.getInstance().getWorldEditInterface().restoreSchematic(this.getRegion(), this.getRegionworld(), regionsSchematicPathWithoutFileEnding);
+            } catch (SchematicNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        });
 
         if (AdvancedRegionMarket.getInstance().getPluginSettings().isDeleteSubregionsOnParentRegionBlockReset()) {
             Iterator<Region> subRegions = this.subregions.iterator();
@@ -991,10 +1002,13 @@ public abstract class Region implements Saveable {
     }
 
     public void killEntitys() {
-        List<Entity> entities = this.getInsideEntities(false);
-        for (Entity entity : entities) {
-            entity.remove();
-        }
+        this.getInsideEntities(false).thenAccept(entities -> {
+            for (Entity entity : entities) {
+                AdvancedRegionMarket.getInstance().getScheduler().runAtEntity(entity, (t) -> {
+                    entity.remove();
+                });
+            }
+        });
     }
 
     public void resetBuiltBlocks() {
@@ -1167,8 +1181,9 @@ public abstract class Region implements Saveable {
         return this.getFlagGroup().replaceVariables(message);
     }
 
-    public List<Entity> getInsideEntities(boolean includePlayers) {
-        List<Entity> entities;
+    public CompletableFuture<List<Entity>> getInsideEntities(boolean includePlayers) {
+        CompletableFuture<List<Entity>> future = new CompletableFuture<>();
+
         List<Entity> result = new ArrayList<>();
         Vector minPoint = this.getRegion().getMinPoint();
         Vector maxPoint = this.getRegion().getMaxPoint();
@@ -1178,35 +1193,39 @@ public abstract class Region implements Saveable {
         double minZ = (minPoint.getZ() + maxPoint.getZ()) / 2;
         Location midLocation = new Location(this.getRegionworld(), minX, minY, minZ);
 
-        double xAxis = (maxPoint.getX() + 1 - minPoint.getX()) / 2d;
-        double yAxis = (maxPoint.getY() + 1 - minPoint.getY()) / 2d;
-        double zAxis = (maxPoint.getZ() + 1 - minPoint.getZ()) / 2d;
+        AdvancedRegionMarket.getInstance().getScheduler().runAtLocation(midLocation, (t) -> {
+            double xAxis = (maxPoint.getX() + 1 - minPoint.getX()) / 2d;
+            double yAxis = (maxPoint.getY() + 1 - minPoint.getY()) / 2d;
+            double zAxis = (maxPoint.getZ() + 1 - minPoint.getZ()) / 2d;
 
-        xAxis += 1;
-        yAxis += 1;
-        zAxis += 1;
+            xAxis += 1;
+            yAxis += 1;
+            zAxis += 1;
 
-        entities = new ArrayList<>(this.getRegionworld().getNearbyEntities(midLocation, xAxis, yAxis, zAxis));
+            List<Entity> entities = new ArrayList<>(this.getRegionworld().getNearbyEntities(midLocation, xAxis, yAxis, zAxis));
 
-        for (Entity entity : entities) {
-            Location entityLoc = entity.getLocation();
-            boolean insideRegion = false;
-            boolean add = true;
+            for (Entity entity : entities) {
+                Location entityLoc = entity.getLocation();
+                boolean insideRegion = false;
+                boolean add = true;
 
-            if (this.getRegion().contains(entityLoc.getBlockX(), entityLoc.getBlockY(), entityLoc.getBlockZ())) {
-                insideRegion = true;
+                if (this.getRegion().contains(entityLoc.getBlockX(), entityLoc.getBlockY(), entityLoc.getBlockZ())) {
+                    insideRegion = true;
+                }
+
+                if ((entity.getType() == EntityType.PLAYER) && !includePlayers) {
+                    add = false;
+                }
+
+                if (insideRegion && add) {
+                    result.add(entity);
+                }
+
             }
 
-            if ((entity.getType() == EntityType.PLAYER) && !includePlayers) {
-                add = false;
-            }
-
-            if (insideRegion && add) {
-                result.add(entity);
-            }
-
-        }
-        return result;
+            future.complete(result);
+        });
+        return future;
     }
 
     public List<Entity> getFilteredInsideEntities(boolean includePlayers, boolean includeHanging, boolean includeMonsters,
@@ -1214,52 +1233,53 @@ public abstract class Region implements Saveable {
                                                   boolean includeProjectiles, boolean includeAreaEffectCloud,
                                                   boolean includeItemFrames, boolean includePaintings) {
 
-        List<Entity> insideEntitys = this.getInsideEntities(includePlayers);
         List<Entity> result = new ArrayList<>();
 
-        for (Entity selectedEntity : insideEntitys) {
-            boolean add = false;
+        this.getInsideEntities(includePlayers).thenAccept(insideEntitys -> {
+            for (Entity selectedEntity : insideEntitys) {
+                boolean add = false;
 
-            if ((selectedEntity instanceof Hanging) && includeHanging) {
-                add = true;
-            }
+                if ((selectedEntity instanceof Hanging) && includeHanging) {
+                    add = true;
+                }
 
-            if ((selectedEntity instanceof Monster) && includeMonsters) {
-                add = true;
-            }
+                if ((selectedEntity instanceof Monster) && includeMonsters) {
+                    add = true;
+                }
 
-            if ((selectedEntity instanceof Animals) && includeAnimals) {
-                add = true;
-            }
+                if ((selectedEntity instanceof Animals) && includeAnimals) {
+                    add = true;
+                }
 
-            if ((selectedEntity instanceof Creature) && includeCreatures) {
-                add = true;
-            }
+                if ((selectedEntity instanceof Creature) && includeCreatures) {
+                    add = true;
+                }
 
-            if ((selectedEntity instanceof Vehicle) && includeVehicles) {
-                add = true;
-            }
+                if ((selectedEntity instanceof Vehicle) && includeVehicles) {
+                    add = true;
+                }
 
-            if ((selectedEntity instanceof Projectile) && includeProjectiles) {
-                add = true;
-            }
+                if ((selectedEntity instanceof Projectile) && includeProjectiles) {
+                    add = true;
+                }
 
-            if ((selectedEntity instanceof AreaEffectCloud) && includeAreaEffectCloud) {
-                add = true;
-            }
+                if ((selectedEntity instanceof AreaEffectCloud) && includeAreaEffectCloud) {
+                    add = true;
+                }
 
-            if ((selectedEntity instanceof ItemFrame) && includeItemFrames) {
-                add = true;
-            }
+                if ((selectedEntity instanceof ItemFrame) && includeItemFrames) {
+                    add = true;
+                }
 
-            if ((selectedEntity instanceof Painting) && includePaintings) {
-                add = true;
-            }
+                if ((selectedEntity instanceof Painting) && includePaintings) {
+                    add = true;
+                }
 
-            if (add) {
-                result.add(selectedEntity);
+                if (add) {
+                    result.add(selectedEntity);
+                }
             }
-        }
+        });
 
         return result;
     }

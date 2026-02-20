@@ -1,7 +1,7 @@
 package net.alex9849.arm.minifeatures;
 
+import com.tcoded.folialib.wrapper.task.WrappedTask;
 import net.alex9849.arm.AdvancedRegionMarket;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
@@ -13,8 +13,8 @@ import java.util.List;
 
 public class ParticleBorder {
     private Player player;
-    private Integer taskID;
-    private Integer cancelerID;
+    private WrappedTask task;
+    private WrappedTask canceler;
     private World world;
     private List<Vector> points;
     private int depth;
@@ -168,7 +168,8 @@ public class ParticleBorder {
 
         final World finalWorld = this.world;
 
-        this.taskID = Bukkit.getScheduler().scheduleSyncRepeatingTask(AdvancedRegionMarket.getInstance(), new Runnable() {
+
+        this.task = AdvancedRegionMarket.getInstance().getScheduler().runTimerAsync(new Runnable() {
 
             @Override
             public void run() {
@@ -182,25 +183,25 @@ public class ParticleBorder {
                 }
             }
         }, 0, 20);
-        this.cancelerID = Bukkit.getScheduler().scheduleSyncDelayedTask(AdvancedRegionMarket.getInstance(), new Runnable() {
+        this.canceler = AdvancedRegionMarket.getInstance().getScheduler().runLaterAsync(new Runnable() {
             @Override
             public void run() {
-                if (taskID != null) {
-                    Bukkit.getScheduler().cancelTask(taskID);
+                if (task != null) {
+                    task.cancel();
                 }
-                cancelerID = null;
-                taskID = null;
+                canceler = null;
+                task = null;
             }
         }, ticks);
     }
 
     public void removeBorder() {
-        if ((this.taskID == null) || (this.cancelerID == null)) {
+        if ((this.task == null) || (this.canceler == null)) {
             return;
         }
-        Bukkit.getScheduler().cancelTask(cancelerID);
-        Bukkit.getScheduler().cancelTask(taskID);
-        cancelerID = null;
-        taskID = null;
+        canceler.cancel();
+        task.cancel();
+        canceler = null;
+        task = null;
     }
 }

@@ -1,7 +1,7 @@
 package net.alex9849.arm.minifeatures.teleporter;
 
+import com.tcoded.folialib.wrapper.task.WrappedTask;
 import net.alex9849.arm.Messages;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -10,10 +10,10 @@ import org.bukkit.event.player.PlayerQuitEvent;
 
 public class TeleporterListener implements Listener {
     private Player player;
-    private Integer teleportTask;
+    private WrappedTask teleportTask;
     private double tolerance = 0.5;
 
-    protected TeleporterListener(Player player, int teleportTask) {
+    protected TeleporterListener(Player player, WrappedTask teleportTask) {
         this.player = player;
         this.teleportTask = teleportTask;
     }
@@ -40,7 +40,7 @@ public class TeleporterListener implements Listener {
             if (this.tolerance < 0) {
                 if (teleportTask != null) {
                     this.player.sendMessage(Messages.PREFIX + Messages.TELEPORTER_TELEPORTATION_ABORDED);
-                    Bukkit.getScheduler().cancelTask(this.teleportTask);
+                    this.teleportTask.cancel();
                     PlayerMoveEvent.getHandlerList().unregister(this);
                     PlayerQuitEvent.getHandlerList().unregister(this);
                 }
@@ -51,14 +51,14 @@ public class TeleporterListener implements Listener {
     @EventHandler
     private void playerLeave(PlayerQuitEvent event) {
         if (event.getPlayer().getUniqueId() == this.player.getUniqueId()) {
-            Bukkit.getScheduler().cancelTask(this.teleportTask);
+            this.teleportTask.cancel();
             PlayerMoveEvent.getHandlerList().unregister(this);
             PlayerQuitEvent.getHandlerList().unregister(this);
 
         }
     }
 
-    protected void setTeleportTaskID(int taskID) {
-        this.teleportTask = taskID;
+    protected void setTeleportTask(WrappedTask task) {
+        this.teleportTask = task;
     }
 }

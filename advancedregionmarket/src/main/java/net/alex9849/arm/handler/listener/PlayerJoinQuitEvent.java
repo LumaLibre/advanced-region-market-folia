@@ -47,7 +47,7 @@ public class PlayerJoinQuitEvent implements Listener {
             region.setLastLogin();
         }
 
-        Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
+        AdvancedRegionMarket.getInstance().getScheduler().runAtEntityLater(player, new Runnable() {
             @Override
             public void run() {
                 PlayerJoinQuitEvent.doTakeOverCheck(player);
@@ -55,7 +55,7 @@ public class PlayerJoinQuitEvent implements Listener {
         }, 40L);
 
         if (plugin.getPluginSettings().isSendRentRegionExpirationWarning()) {
-            Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
+            AdvancedRegionMarket.getInstance().getScheduler().runAtEntityLater(player, new Runnable() {
                 @Override
                 public void run() {
                     sendExpirationWarnings(player);

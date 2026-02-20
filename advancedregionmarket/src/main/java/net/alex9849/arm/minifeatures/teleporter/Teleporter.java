@@ -1,5 +1,7 @@
 package net.alex9849.arm.minifeatures.teleporter;
 
+import com.tcoded.folialib.wrapper.task.WrappedTask;
+import io.papermc.lib.PaperLib;
 import net.alex9849.arm.AdvancedRegionMarket;
 import net.alex9849.arm.Messages;
 import net.alex9849.arm.Permission;
@@ -201,7 +203,7 @@ public class Teleporter {
 
     public static void scheduleTeleport(Player player, Location loc, String message, int ticks) {
         if ((ticks == 0) || player.hasPermission(Permission.ADMIN_BYPASS_TELEPORTER_COOLDOWN)) {
-            player.teleport(loc);
+            PaperLib.teleportAsync(player, loc);
             if (!message.equals("") && message != null) {
                 player.sendMessage(message);
             }
@@ -212,19 +214,17 @@ public class Teleporter {
 
             TeleporterListener listener = new TeleporterListener(player);
 
-            int taskID = Bukkit.getScheduler().runTaskLater(AdvancedRegionMarket.getInstance(), new Runnable() {
-                @Override
-                public void run() {
-                    player.teleport(loc);
-                    if (!message.equals("")) {
-                        player.sendMessage(message);
-                    }
-                    PlayerMoveEvent.getHandlerList().unregister(listener);
-                    PlayerQuitEvent.getHandlerList().unregister(listener);
+            WrappedTask task = AdvancedRegionMarket.getInstance().getScheduler().runAtEntityLater(player, () -> {
+                PaperLib.teleportAsync(player, loc);
+                if (!message.equals("")) {
+                    player.sendMessage(message);
                 }
-            }, ticks).getTaskId();
+                PlayerMoveEvent.getHandlerList().unregister(listener);
+                PlayerQuitEvent.getHandlerList().unregister(listener);
+            }, ticks);
 
-            listener.setTeleportTaskID(taskID);
+
+            listener.setTeleportTask(task);
 
             Bukkit.getServer().getPluginManager().registerEvents(listener, AdvancedRegionMarket.getInstance());
 

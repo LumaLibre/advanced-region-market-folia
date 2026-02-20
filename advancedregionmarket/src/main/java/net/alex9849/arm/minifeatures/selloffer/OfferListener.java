@@ -1,5 +1,6 @@
 package net.alex9849.arm.minifeatures.selloffer;
 
+import com.tcoded.folialib.wrapper.task.WrappedTask;
 import net.alex9849.arm.AdvancedRegionMarket;
 import net.alex9849.arm.Messages;
 import org.bukkit.Bukkit;
@@ -13,14 +14,12 @@ public class OfferListener implements Listener {
     private Player seller;
     private Player buyer;
     private Offer offer;
-    private int timertask;
-    private boolean isTimerActive;
+    private WrappedTask timertask;
 
     protected OfferListener(Player seller, Player buyer, Offer offer) {
         this.seller = seller;
         this.buyer = buyer;
         this.offer = offer;
-        this.isTimerActive = false;
     }
 
     @EventHandler
@@ -33,21 +32,19 @@ public class OfferListener implements Listener {
 
     protected void unregister() {
         PlayerQuitEvent.getHandlerList().unregister(this);
-        if (this.isTimerActive) {
-            Bukkit.getScheduler().cancelTask(timertask);
-            isTimerActive = false;
+        if (this.timertask != null && !this.timertask.isCancelled()) {
+            this.timertask.cancel();
         }
     }
 
     protected void activateCancelTimer(int ticks) {
-        this.isTimerActive = true;
-        this.timertask = Bukkit.getScheduler().runTaskLater(AdvancedRegionMarket.getInstance(), new Runnable() {
+        this.timertask = AdvancedRegionMarket.getInstance().getScheduler().runLater(new Runnable() {
             @Override
             public void run() {
                 seller.sendMessage(Messages.PREFIX + offer.replaceVariables(Messages.OFFER_TIMED_OUT));
                 buyer.sendMessage(Messages.PREFIX + offer.replaceVariables(Messages.OFFER_TIMED_OUT));
                 offer.reject();
             }
-        }, ticks).getTaskId();
+        }, ticks);
     }
 }

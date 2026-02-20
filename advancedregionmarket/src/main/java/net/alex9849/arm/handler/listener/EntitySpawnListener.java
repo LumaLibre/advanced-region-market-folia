@@ -40,10 +40,12 @@ public class EntitySpawnListener implements Listener {
             if (region.getEntityLimitGroup().isLimitReached(region, event.getEntityType(), region.getExtraTotalEntitys())) {
                 event.setCancelled(true);
                 for (Player player : Bukkit.getOnlinePlayers()) {
-                    Location playerLoc = player.getLocation();
-                    if (region.getRegion().contains(playerLoc.getBlockX(), playerLoc.getBlockY(), playerLoc.getBlockZ())) {
-                        player.getPlayer().sendMessage(Messages.PREFIX + region.replaceVariables(Messages.ENTITYLIMITGROUP_COULD_NOT_SPAWN_ENTITY));
-                    }
+                    AdvancedRegionMarket.getInstance().getScheduler().runAtEntity(player, (t) -> {
+                        Location playerLoc = player.getLocation();
+                        if (region.getRegion().contains(playerLoc.getBlockX(), playerLoc.getBlockY(), playerLoc.getBlockZ())) {
+                            player.getPlayer().sendMessage(Messages.PREFIX + region.replaceVariables(Messages.ENTITYLIMITGROUP_COULD_NOT_SPAWN_ENTITY));
+                        }
+                    });
                 }
             }
         }
@@ -70,10 +72,12 @@ public class EntitySpawnListener implements Listener {
             if (region.getEntityLimitGroup().isLimitReached(region, event.getVehicle().getType(), region.getExtraTotalEntitys())) {
                 event.setCancelled(true);
                 for (Player player : Bukkit.getOnlinePlayers()) {
-                    Location playerLoc = player.getLocation();
-                    if (region.getRegion().contains(playerLoc.getBlockX(), playerLoc.getBlockY(), playerLoc.getBlockZ())) {
-                        player.getPlayer().sendMessage(Messages.PREFIX + region.replaceVariables(Messages.ENTITYLIMITGROUP_COULD_NOT_SPAWN_ENTITY));
-                    }
+                    AdvancedRegionMarket.getInstance().getScheduler().runAtEntity(player, (t) -> {
+                        Location playerLoc = player.getLocation();
+                        if (region.getRegion().contains(playerLoc.getBlockX(), playerLoc.getBlockY(), playerLoc.getBlockZ())) {
+                            player.getPlayer().sendMessage(Messages.PREFIX + region.replaceVariables(Messages.ENTITYLIMITGROUP_COULD_NOT_SPAWN_ENTITY));
+                        }
+                    });
                 }
             }
         }

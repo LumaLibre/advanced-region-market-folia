@@ -2,6 +2,8 @@ package net.alex9849.arm;
 
 import com.sk89q.worldedit.bukkit.WorldEditPlugin;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
+import com.tcoded.folialib.FoliaLib;
+import com.tcoded.folialib.impl.PlatformScheduler;
 import net.alex9849.arm.adapters.WGRegion;
 import net.alex9849.arm.adapters.WorldEditInterface;
 import net.alex9849.arm.adapters.WorldGuardInterface;
@@ -92,6 +94,7 @@ public class AdvancedRegionMarket extends JavaPlugin {
     private LimitGroupManager limitGroupManager = null;
     private ArmSettings pluginSettings = null;
     private AbstractMaterialFinder materialFinder = null;
+    private FoliaLib foliaLib = null;
     private static AdvancedRegionMarket INSTANCE = null;
 
 
@@ -104,6 +107,7 @@ public class AdvancedRegionMarket extends JavaPlugin {
 
     public void onEnable() {
         INSTANCE = this;
+        foliaLib = new FoliaLib(this);
         Reader pluginYmlReader = Objects.requireNonNull(getTextResource("plugin.yml"));
         YamlConfiguration pluginYml = YamlConfiguration.loadConfiguration(pluginYmlReader);
         //This is a workaround to make shure that this plugin is loaded after the last world has been loaded.
@@ -117,7 +121,7 @@ public class AdvancedRegionMarket extends JavaPlugin {
             getLogger().log(Level.WARNING, "It looks like one of these plugins is installed, but not loaded yet:\n" +
                     String.join(", ", softdependCheckPlugins) + "\n" +
                     "In order to keep ARM working it scheduled its own enabling code to the end of the startup process as fallback!\n");
-            Bukkit.getScheduler().scheduleSyncDelayedTask(this, this::startup, 1);
+            getScheduler().runLater(t -> this.startup(), 1);
         } else {
             startup();
         }
@@ -223,7 +227,7 @@ public class AdvancedRegionMarket extends JavaPlugin {
         loadInactivityExpirationGroups();
         this.presetPatternManager = new PresetPatternManager(new File(this.getDataFolder() + "/presets.yml"));
         this.getRegionManager().setTabCompleteRegions(getConfig().getBoolean("Other.CompleteRegionsOnTabComplete"));
-        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> this.getRegionManager().doTick(), 1, 1);
+        AdvancedRegionMarket.getInstance().getScheduler().runTimerAsync(() -> this.getRegionManager().doTick(), 1, 1);
 
         this.loadCommands();
 
@@ -231,7 +235,7 @@ public class AdvancedRegionMarket extends JavaPlugin {
         getLogger().log(Level.INFO, "I'm always searching for better translations of AdvancedRegionMarket. "
                 + "If you've translated the plugin it would be very nice if you would send me your translation via "
                 + "spigot private message! :)");
-        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
+        AdvancedRegionMarket.getInstance().getScheduler().runTimerAsync(new Runnable() {
             @Override
             public void run() {
                 AdvancedRegionMarket.getInstance().getRegionManager().updateFile();
@@ -241,13 +245,13 @@ public class AdvancedRegionMarket extends JavaPlugin {
                 AdvancedRegionMarket.getInstance().getFlagGroupManager().updateFile();
             }
         }, 0, 60);
-        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
+        AdvancedRegionMarket.getInstance().getScheduler().runTimerAsync(new Runnable() {
             @Override
             public void run() {
                 PlayerInactivityGroupMapper.updateMapAscync();
             }
         }, 900, 6000);
-        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
+        AdvancedRegionMarket.getInstance().getScheduler().runTimer(new Runnable() {
             @Override
             public void run() {
                 for (Region region : AdvancedRegionMarket.getInstance().getRegionManager()) {
@@ -734,6 +738,10 @@ public class AdvancedRegionMarket extends JavaPlugin {
     /*###############################
     ############ Getter #############
     ###############################*/
+
+    public PlatformScheduler getScheduler() {
+        return foliaLib.getScheduler();
+    }
 
     public ArmSettings getPluginSettings() {
         return this.pluginSettings;
