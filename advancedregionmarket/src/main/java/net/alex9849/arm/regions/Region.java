@@ -935,7 +935,9 @@ public abstract class Region implements Saveable {
     public void createBackup() {
         String fileName = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSSS").format(new Date());
         File regionsSchematicFolder = new File(getRegionSchematicFolder() + "/Backups");
-        AdvancedRegionMarket.getInstance().getWorldEditInterface().createSchematic(this.getRegion(), this.getRegionworld(), regionsSchematicFolder, fileName);
+        AdvancedRegionMarket.getInstance().getScheduler().runAtLocation(this.getRegion().getMinPoint().toLocation(this.getRegionworld()), (t) -> {
+            AdvancedRegionMarket.getInstance().getWorldEditInterface().createSchematic(this.getRegion(), this.getRegionworld(), regionsSchematicFolder, fileName);
+        });
     }
 
     public void loadBackup(String name) throws SchematicNotFoundException {
@@ -944,7 +946,9 @@ public abstract class Region implements Saveable {
     }
 
     public void createSchematic() {
-        AdvancedRegionMarket.getInstance().getWorldEditInterface().createSchematic(this.getRegion(), this.getRegionworld(), getRegionSchematicFolder(), "schematic");
+        AdvancedRegionMarket.getInstance().getScheduler().runAtLocation(this.getRegion().getMinPoint().toLocation(this.getRegionworld()), (t) -> {
+            AdvancedRegionMarket.getInstance().getWorldEditInterface().createSchematic(this.getRegion(), this.getRegionworld(), getRegionSchematicFolder(), "schematic");
+        });
     }
 
     public File getRegionSchematicFolder() {

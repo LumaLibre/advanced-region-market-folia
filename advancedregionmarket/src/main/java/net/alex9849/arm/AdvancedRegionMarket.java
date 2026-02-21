@@ -300,7 +300,7 @@ public class AdvancedRegionMarket extends JavaPlugin {
         VehicleCreateEvent.getHandlerList().unregister(this);
         PlayerChatEvent.getHandlerList().unregister(this);
         EntityChangeBlockEvent.getHandlerList().unregister(this);
-        getServer().getScheduler().cancelTasks(this);
+        getScheduler().cancelAllTasks();
         HandlerList.unregisterAll(this);
         INSTANCE = null;
     }
