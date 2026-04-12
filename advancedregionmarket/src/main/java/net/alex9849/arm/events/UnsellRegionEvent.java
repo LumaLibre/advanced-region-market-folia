@@ -8,6 +8,6 @@ import org.bukkit.Bukkit;
  */
 public class UnsellRegionEvent extends RegionEvent {
     public UnsellRegionEvent(Region region) {
-        super(region, !Bukkit.isPrimaryThread());
+        super(region);
     }
 }

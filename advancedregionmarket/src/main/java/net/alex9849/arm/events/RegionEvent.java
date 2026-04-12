@@ -1,6 +1,7 @@
 package net.alex9849.arm.events;
 
 import net.alex9849.arm.regions.Region;
+import org.bukkit.Bukkit;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
@@ -11,12 +12,7 @@ public class RegionEvent extends Event implements Cancellable {
     private boolean isCancelled;
 
     protected RegionEvent(Region region) {
-        this.region = region;
-        this.isCancelled = false;
-    }
-
-    protected RegionEvent(Region region, boolean async) {
-        super(async);
+        super(!Bukkit.isPrimaryThread());
         this.region = region;
         this.isCancelled = false;
     }
