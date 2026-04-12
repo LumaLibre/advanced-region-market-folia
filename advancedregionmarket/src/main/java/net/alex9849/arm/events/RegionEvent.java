@@ -15,6 +15,12 @@ public class RegionEvent extends Event implements Cancellable {
         this.isCancelled = false;
     }
 
+    protected RegionEvent(Region region, boolean async) {
+        super(async);
+        this.region = region;
+        this.isCancelled = false;
+    }
+
     public static HandlerList getHandlerList() {
         return handlerList;
     }
