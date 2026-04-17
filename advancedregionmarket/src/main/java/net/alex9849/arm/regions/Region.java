@@ -748,13 +748,13 @@ public abstract class Region implements Saveable {
     }
 
     public void deleteSigns() {
-        for (int i = 0; i < this.sellsign.size(); i++) {
-            Location loc = this.sellsign.get(i).getLocation();
+        List<SignData> toRemove = new ArrayList<>(this.sellsign);
+        for (SignData sign : toRemove) {
+            Location loc = sign.getLocation();
             AdvancedRegionMarket.getInstance().getScheduler().runAtLocation(loc, (t) -> {
                 loc.getBlock().setType(Material.AIR);
                 this.removeSign(loc);
             });
-            i--;
         }
     }
 
